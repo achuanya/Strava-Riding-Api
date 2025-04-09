@@ -1,0 +1,14 @@
+{
+  "name": "strava-data-fetcher",
+  "version": "1.0.0",
+  "description": "获取Strava骑行数据",
+  "main": "fetchStravaRides.js",
+  "scripts": {
+    "start": "node fetchStravaRides.js",
+    "auth": "node useAuthCode.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "open": "^8.4.2"
+  }
+}
