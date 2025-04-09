@@ -42,7 +42,7 @@
    yarn start
    ```
    
-4. 查看输出的JSON文件，文件名格式为：`strava_rides_YYYY_YYYY-MM-DD.json`
+4. 查看输出的JSON文件，文件名格式为：`strava_data.json`
 
 ## 版本说明 (2025-03-25 更新)
 
