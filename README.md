@@ -64,9 +64,6 @@ Strava Riding Api 只实现了 OAuth 2.0 授权流程的部分自动化，由于
 2. **检查API状态**：
    访问 [Strava API状态](https://status.strava.com/) 确认服务是否正常
 
-3. **使用原生HTTPS模块**：
-   脚本已更新为使用Node.js原生HTTPS模块，以解决"protocol mismatch"错误
-
 ## 📝 常见问题解决
 
 1. **"protocol mismatch"错误**：
@@ -83,4 +80,4 @@ Strava Riding Api 只实现了 OAuth 2.0 授权流程的部分自动化，由于
 
 ## 📄 许可证
 
-本项目采用Mozilla公共许可证2.0版发布 - 查看 LICENSE 文件了解详情。
+本项目采用 Mozilla 公共许可证 2.0 版发布
