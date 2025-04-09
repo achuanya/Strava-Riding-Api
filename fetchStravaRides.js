@@ -451,7 +451,6 @@ async function getDetailedActivities(accessToken, activities) {
   console.log('开始获取每个活动的详细数据...');
   const detailedActivities = [];
   
-  // 遍历使用索引，便于进度跟踪
   for (let i = 0; i < activities.length; i++) {
     const activity = activities[i];
     console.log(`获取活动详情 ${i+1}/${activities.length}: ${activity.name}`);
@@ -468,7 +467,6 @@ async function getDetailedActivities(accessToken, activities) {
     } catch (error) {
       console.error(`获取活动 ${activity.id} 详情失败:`, error.message);
       
-      // 备选方案：尝试使用axios重新获取
       try {
         console.log('尝试使用axios作为备选方案...');
         const response = await axios.get(`${config.STRAVA_BASE_URL}/activities/${activity.id}`, {

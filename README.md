@@ -4,17 +4,17 @@
    <img alt="License" src="https://img.shields.io/badge/License-MPL--2.0-blue.svg">
 </p>
 
-这个脚本用于从Strava API获取指定用户当年的所有骑行活动数据，并将其保存为JSON格式
+该脚本基于 Strava API v3 获取指定用户当年的所有骑行活动数据，并将其保存为JSON格式
 
-## ✨ 功能特点
+## ✨ 功能特性
 
-Strava Riding Api 只实现了 OAuth 2.0 授权流程的部分自动化，但由于安全设计和技术限制，无法实现完全自动化：
+Strava Riding Api 只实现了 OAuth 2.0 授权流程的部分自动化，由于安全设计和技术限制，目前无法实现完全自动化：
 
-已实现的自动化部分
+已实现部分
 
 - 半自动 OAuth 2.0 授权流程，轻松访问您的 Strava 数据
 - 自动获取任意年份的所有骑行记录
-- 获取每个活动的完整运动数据（参考 Strava API v3）
+- 获取每个活动的完整运动数据
 - 智能令牌管理：自动保存和刷新过期的访问令牌
 - 数据自动转换：米→公里，秒→小时.分钟，速度单位统一等
 - 内置多重容错机制，确保数据获取的可靠性
@@ -66,9 +66,6 @@ Strava Riding Api 只实现了 OAuth 2.0 授权流程的部分自动化，但由
 
 3. **使用原生HTTPS模块**：
    脚本已更新为使用Node.js原生HTTPS模块，以解决"protocol mismatch"错误
-
-4. **网络问题**：
-   确保您的网络能够访问Strava API，检查是否需要配置代理
 
 ## 📝 常见问题解决
 
