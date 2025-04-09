@@ -1,4 +1,3 @@
-# Logs
 logs
 *.log
 npm-debug.log*
@@ -14,7 +13,9 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
-# Editor directories and files
+.env
+.strava_token.json
+
 .vscode/*
 !.vscode/extensions.json
 .idea

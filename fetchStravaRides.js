@@ -1,22 +1,38 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const url = require('url');
-const open = require('open');
+const axios    = require('axios');
+const fs       = require('fs');
+const path     = require('path');
+const http     = require('http');
+const url      = require('url');
+const open     = require('open');
 const readline = require('readline');
-const https = require('https');
+const https    = require('https');
 
-// Strava API 认证配置
+// 加载环境变量
+require('dotenv').config();
+
+// Strava API 认证配置 - 从环境变量加载
 const config = {
-  clientId: '130832',
-  clientSecret: 'a0f96f1f2c8b06e0feb4feb05aee0a688cf3c9f3',
-  userId: '114014642',
-  baseUrl: 'https://www.strava.com/api/v3',
-  redirectUri: 'http://localhost:8000/callback',
-  scope: 'read,activity:read_all',
-  tokenFile: path.join(__dirname, '.strava_token.json')
+  STRAVA_CLIENT_ID:     process.env.STRAVA_CLIENT_ID,
+  STRAVA_CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET,
+  STRAVA_USER_ID:       process.env.STRAVA_USER_ID,
+  STRAVA_BASE_URL:      process.env.STRAVA_BASE_URL,
+  STRAVA_REDIRECT_URI:  process.env.STRAVA_REDIRECT_URI,
+  STRAVA_SCOPE:         process.env.STRAVA_SCOPE,
+  TOKENFILE:            path.join(__dirname, process.env.STRAVA_TOKEN)
 };
+
+// 检查必要的环境变量是否已配置
+function checkRequiredEnvVars() {
+  const required = ['STRAVA_CLIENT_ID', 'STRAVA_CLIENT_SECRET'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.warn(`警告: 以下环境变量未设置: ${missing.join(', ')}`);
+  }
+}
+
+// 在程序开始时检查环境变量
+checkRequiredEnvVars();
 
 // 创建命令行读取界面
 const rl = readline.createInterface({
@@ -29,12 +45,21 @@ const currentYear = new Date().getFullYear();
 const startOfYear = new Date(currentYear, 0, 1).getTime() / 1000; // Unix timestamp (秒)
 const endOfYear = new Date(currentYear + 1, 0, 1).getTime() / 1000; // Unix timestamp (秒)
 
-// 从完整活动数据中提取指定字段
+// extractActivityFields 从完整活动数据中提取指定字段
+//
+// Description:
+//   该函数实现了数据精简，只提取需要的字段，降低内存使用
+//   通过创建新对象而非修改原对象，避免副作用
+//   自动构建活动URL，便于用户访问原始数据
+//
+// Parameters:
+//   - activity: 包含完整字段的活动数据对象
+//
+// Returns:
+//   - Object: 只包含所需字段的简化活动对象
 function extractActivityFields(activity) {
-  // 创建活动的URL
   const activityUrl = `https://www.strava.com/activities/${activity.id}`;
   
-  // 提取指定字段
   return {
     type: activity.type,                                // 活动类型
     name: activity.name,                                // 活动名称
@@ -55,8 +80,8 @@ function extractActivityFields(activity) {
 // 尝试从文件加载令牌
 function loadTokenFromFile() {
   try {
-    if (fs.existsSync(config.tokenFile)) {
-      const tokenData = JSON.parse(fs.readFileSync(config.tokenFile, 'utf8'));
+    if (fs.existsSync(config.TOKENFILE)) {
+      const tokenData = JSON.parse(fs.readFileSync(config.TOKENFILE, 'utf8'));
       console.log('找到保存的令牌');
       return tokenData;
     }
@@ -69,7 +94,7 @@ function loadTokenFromFile() {
 // 保存令牌到文件
 function saveTokenToFile(tokenData) {
   try {
-    fs.writeFileSync(config.tokenFile, JSON.stringify(tokenData, null, 2), 'utf8');
+    fs.writeFileSync(config.TOKENFILE, JSON.stringify(tokenData, null, 2), 'utf8');
     console.log('令牌已保存，下次运行将自动使用');
   } catch (error) {
     console.error('保存令牌失败:', error.message);
@@ -81,8 +106,8 @@ async function refreshAccessToken(refreshToken) {
   try {
     console.log('使用刷新令牌获取新的访问令牌...');
     const response = await axios.post('https://www.strava.com/oauth/token', {
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
+      client_id: config.STRAVA_CLIENT_ID,
+      client_secret: config.STRAVA_CLIENT_SECRET,
       grant_type: 'refresh_token',
       refresh_token: refreshToken
     });
@@ -99,7 +124,7 @@ async function refreshAccessToken(refreshToken) {
 // 通过命令行手动输入授权码
 function getAuthCodeFromConsole() {
   return new Promise((resolve) => {
-    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=${encodeURIComponent(config.scope)}`;
+    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${config.STRAVA_CLIENT_ID}&redirect_uri=${encodeURIComponent(config.STRAVA_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(config.STRAVA_SCOPE)}`;
     
     console.log('\n由于自动授权过程可能出现问题，您可以手动获取授权码：');
     console.log('1. 复制并在浏览器中打开以下链接:');
@@ -176,8 +201,7 @@ async function getAuthorizationCode() {
       });
       
       server.listen(8000, () => {
-        // 构建授权URL
-        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=${encodeURIComponent(config.scope)}`;
+        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${config.STRAVA_CLIENT_ID}&redirect_uri=${encodeURIComponent(config.STRAVA_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(config.STRAVA_SCOPE)}`;
         
         console.log('请在打开的浏览器中授权应用访问您的Strava账户');
         console.log(`如果浏览器没有自动打开，请手动访问: ${authUrl}`);
@@ -214,8 +238,8 @@ async function getAccessTokenFromCode(code) {
     console.log(`授权码: ${code.substring(0, 4)}...${code.substring(code.length - 4)}`); // 只显示部分授权码
 
     const response = await axios.post('https://www.strava.com/oauth/token', {
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
+      client_id: config.STRAVA_CLIENT_ID,
+      client_secret: config.STRAVA_CLIENT_SECRET,
       code: code,
       grant_type: 'authorization_code'
     });
@@ -277,11 +301,23 @@ async function getAccessToken() {
     }
   } finally {
     // 确保readline接口在函数完成后关闭
-    // 但不要在这里关闭，因为可能在其他地方还需要使用
   }
 }
 
-// 使用原生HTTPS模块获取数据
+// makeGetRequest 使用原生Node.js HTTPS模块发送GET请求，避免第三方库依赖问题
+//
+// Description:
+//   该函数使用Node.js内置HTTPS模块直接发送请求，避免了Axios可能遇到的协议不匹配问题
+//   通过直接处理底层HTTP响应，减少中间层处理开销，提高性能
+//   包含完整的错误处理和HTTP状态码验证，确保数据的可靠性
+//
+// Parameters:
+//   - url        : 要请求的完整URL地址
+//   - accessToken: Strava API的访问令牌，用于授权请求
+//
+// Returns:
+//   - Promise<Object>: 返回解析后的JSON数据对象
+//   - 在出错情况下，返回被拒绝的Promise和错误信息
 function makeGetRequest(url, accessToken) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -294,6 +330,7 @@ function makeGetRequest(url, accessToken) {
     https.get(url, options, (res) => {
       let data = '';
       
+      // 使用事件监听模式收集数据块
       res.on('data', (chunk) => {
         data += chunk;
       });
@@ -316,11 +353,23 @@ function makeGetRequest(url, accessToken) {
   });
 }
 
-// 获取用户的骑行活动列表
+// getActivities 获取用户的骑行活动列表，支持分页处理大量数据
+//
+// Description:
+//   该函数使用分页机制获取Strava API中的活动数据
+//   实现了容错机制，当原生HTTPS请求失败时自动切换到Axios作为备选方案
+//   通过过滤机制，只保留类型为'Ride'的骑行活动，减少不必要的数据处理
+//   使用累加器模式收集多页数据，优化内存使用
+//
+// Parameters:
+//   - accessToken: 有效的Strava API访问令牌
+//
+// Returns:
+//   - Promise<Array>: 包含所有骑行活动的数组
 async function getActivities(accessToken) {
   console.log('开始获取活动列表...');
   let page = 1;
-  const perPage = 100; // Strava API允许的最大页面大小
+  const perPage = 100; // Strava API允许的最大页面大小，减少请求次数
   let allActivities = [];
   let hasMoreActivities = true;
 
@@ -328,13 +377,14 @@ async function getActivities(accessToken) {
     try {
       console.log(`获取第${page}页活动...`);
       
-      // 构建请求URL并包含查询参数
-      const apiUrl = `${config.baseUrl}/athlete/activities?after=${startOfYear}&before=${endOfYear}&page=${page}&per_page=${perPage}`;
+      // 构建请求URL，包含年份范围和分页参数
+      const apiUrl = `${config.STRAVA_BASE_URL}/athlete/activities?after=${startOfYear}&before=${endOfYear}&page=${page}&per_page=${perPage}`;
       
       // 使用原生HTTPS模块发送请求
       console.log('使用原生HTTPS模块发送请求...');
       const activities = await makeGetRequest(apiUrl, accessToken);
       
+      // 检查是否已获取所有数据
       if (activities.length === 0) {
         hasMoreActivities = false;
       } else {
@@ -342,16 +392,18 @@ async function getActivities(accessToken) {
         console.log(`本页获取了 ${activities.length} 个活动`);
         const rides = activities.filter(activity => activity.type === 'Ride');
         console.log(`其中 ${rides.length} 个是骑行活动`);
+
+        // 使用concat避免数组嵌套
         allActivities = allActivities.concat(rides);
         page++;
       }
     } catch (error) {
       console.error('获取活动列表失败:', error.message);
       
-      // 尝试使用axios作为备选方案
+      // 备选方案：当原生请求失败时使用axios
       try {
         console.log('尝试使用axios作为备选方案...');
-        const response = await axios.get(`${config.baseUrl}/athlete/activities`, {
+        const response = await axios.get(`${config.STRAVA_BASE_URL}/athlete/activities`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           params: {
             after: startOfYear,
@@ -371,6 +423,7 @@ async function getActivities(accessToken) {
         }
       } catch (axiosError) {
         console.error('备选方法也失败:', axiosError.message);
+        // 两种方法都失败时终止循环
         hasMoreActivities = false;
       }
     }
@@ -380,17 +433,31 @@ async function getActivities(accessToken) {
   return allActivities;
 }
 
-// 获取每个活动的详细数据（已优化，只提取需要的字段）
+// getDetailedActivities 获取每个活动的详细数据
+//
+// Description:
+//   该函数对每个活动ID发起单独请求获取完整详情
+//   实现了双重错误处理和备选方案，确保最大程度获取数据
+//   添加了请求延迟，避免触发Strava API的速率限制
+//   优化了内存使用，只提取需要的字段，减少不必要的数据存储
+//
+// Parameters:
+//   - accessToken: 有效的Strava API访问令牌
+//   - activities: 包含基本活动信息的数组，必须包含id和name字段
+//
+// Returns:
+//   - Promise<Array>: 包含每个活动详细数据的数组
 async function getDetailedActivities(accessToken, activities) {
   console.log('开始获取每个活动的详细数据...');
   const detailedActivities = [];
   
+  // 遍历使用索引，便于进度跟踪
   for (let i = 0; i < activities.length; i++) {
     const activity = activities[i];
     console.log(`获取活动详情 ${i+1}/${activities.length}: ${activity.name}`);
     
     try {
-      const apiUrl = `${config.baseUrl}/activities/${activity.id}?include_all_efforts=true`;
+      const apiUrl = `${config.STRAVA_BASE_URL}/activities/${activity.id}?include_all_efforts=true`;
       
       const activityData = await makeGetRequest(apiUrl, accessToken);
       // 提取指定字段
@@ -401,9 +468,10 @@ async function getDetailedActivities(accessToken, activities) {
     } catch (error) {
       console.error(`获取活动 ${activity.id} 详情失败:`, error.message);
       
+      // 备选方案：尝试使用axios重新获取
       try {
         console.log('尝试使用axios作为备选方案...');
-        const response = await axios.get(`${config.baseUrl}/activities/${activity.id}`, {
+        const response = await axios.get(`${config.STRAVA_BASE_URL}/activities/${activity.id}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           params: {
             include_all_efforts: true
@@ -415,12 +483,13 @@ async function getDetailedActivities(accessToken, activities) {
         detailedActivities.push(simplifiedActivity);
       } catch (axiosError) {
         console.error(`备选方法也失败:`, axiosError.message);
-        // 如果详细数据获取失败，至少保存基本信息
+
+        // 即使两种方法都失败，仍尝试保存基本信息
         const simplifiedActivity = extractActivityFields(activity);
         detailedActivities.push(simplifiedActivity);
       }
       
-      // 添加延迟避免API限流
+      // 错误情况下添加更长的延迟，避免持续触发错误
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
@@ -428,14 +497,28 @@ async function getDetailedActivities(accessToken, activities) {
   return detailedActivities;
 }
 
-// 将活动数据转换为用户友好的格式（高性能版本）
+// convertActivityData 将活动数据转换为指定格式
+//
+// Description:
+//   该函数实现了高性能的数据转换，预分配数组大小避免动态扩容
+//   进行多种单位转换：速度(m/s→km/h)、时间(秒→小时.分钟)、距离(米→公里)
+//   日期格式化：从ISO格式到YYYY-MM-DD格式
+//   使用原位计算和直接赋值，避免不必要的中间变量，优化内存使用
+//
+// Parameters:
+//   - activities: 原始活动数据数组，包含API返回的完整字段
+//
+// Returns:
+//   - Array: 转换后的指定格式数据数组
 function convertActivityData(activities) {
+  // 预分配结果数组大小，避免动态扩容带来的性能损失
   const result = new Array(activities.length);
   
   for (let i = 0; i < activities.length; i++) {
     const activity = activities[i];
     
     // 速度转换：从 m/s 到 km/h (乘以3.6)
+    // 使用整数乘法(36)后除以10，提高精度和性能
     const averageSpeedKmh = Math.round(activity.average_speed * 36) / 10;
     const maxSpeedKmh = Math.round(activity.max_speed * 36) / 10;
     
@@ -478,15 +561,10 @@ function saveToJson(data) {
   // 在保存前转换数据格式
   const convertedData = convertActivityData(data);
   
-  const filename = `strava_rides_${currentYear}_${new Date().toISOString().slice(0,10)}.json`;
+  const filename = `strava_data.json`;
   const filePath = path.join(__dirname, filename);
   
   fs.writeFileSync(filePath, JSON.stringify(convertedData, null, 2), 'utf8');
-  console.log(`数据已保存到: ${filePath}`);
-  console.log(`数据已转换为更友好的格式:
-  - 距离: 从米(m)转换为公里(km)，保留2位小数
-  - 速度: 从米/秒(m/s)转换为公里/小时(km/h)，保留2位小数
-  - 时间: 从秒(s)转换为HH:MM:SS格式`);
 }
 
 // 主函数

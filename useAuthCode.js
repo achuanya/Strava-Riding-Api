@@ -1,9 +1,12 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const https = require('https');
+const axios       = require('axios');
+const fs          = require('fs');
+const path        = require('path');
+const readline    = require('readline');
+const https       = require('https');
 const querystring = require('querystring');
+
+// 加载环境变量
+require('dotenv').config();
 
 // 创建命令行读取界面
 const rl = readline.createInterface({
@@ -11,17 +14,17 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-// Strava API 认证配置
+// Strava API 认证配置 - 从环境变量加载
 const config = {
-  clientId: '130832',
-  clientSecret: 'a0f96f1f2c8b06e0feb4feb05aee0a688cf3c9f3',
-  tokenFile: path.join(__dirname, '.strava_token.json')
+  STRAVA_CLIENT_ID:     process.env.STRAVA_CLIENT_ID,
+  STRAVA_CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET,
+  TOKENFILE:            path.join(__dirname, process.env.STRAVA_TOKEN)
 };
 
 // 保存令牌到文件
 function saveTokenToFile(tokenData) {
   try {
-    fs.writeFileSync(config.tokenFile, JSON.stringify(tokenData, null, 2), 'utf8');
+    fs.writeFileSync(config.TOKENFILE, JSON.stringify(tokenData, null, 2), 'utf8');
     console.log('令牌已保存，下次运行将自动使用');
     return true;
   } catch (error) {
@@ -34,8 +37,8 @@ function saveTokenToFile(tokenData) {
 function makeTokenRequest(code) {
   return new Promise((resolve, reject) => {
     const data = querystring.stringify({
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
+      client_id: config.STRAVA_CLIENT_ID,
+      client_secret: config.STRAVA_CLIENT_SECRET,
       code: code,
       grant_type: 'authorization_code'
     });
@@ -112,8 +115,8 @@ async function getAccessTokenFromCode(code) {
     try {
       // 尝试使用curl命令格式打印请求信息，方便用户手动尝试
       const curlCommand = `curl -X POST https://www.strava.com/oauth/token \
--d client_id=${config.clientId} \
--d client_secret=${config.clientSecret} \
+-d client_id=${config.STRAVA_CLIENT_ID} \
+-d client_secret=${config.STRAVA_CLIENT_SECRET} \
 -d code=${code} \
 -d grant_type=authorization_code`;
       
@@ -127,8 +130,8 @@ async function getAccessTokenFromCode(code) {
         method: 'post',
         url: 'https://www.strava.com/oauth/token',
         data: querystring.stringify({
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
+          client_id: config.STRAVA_CLIENT_ID,
+          client_secret: config.STRAVA_CLIENT_SECRET,
           code: code,
           grant_type: 'authorization_code'
         }),
@@ -208,7 +211,7 @@ async function main() {
   
   // 提供授权链接以便用户获取新的授权码
   console.log('如果您需要获取新的授权码，请访问以下链接:');
-  console.log(`https://www.strava.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fcallback&response_type=code&scope=read%2Cactivity%3Aread_all\n`);
+  console.log(`https://www.strava.com/oauth/authorize?client_id=${config.STRAVA_CLIENT_ID}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fcallback&response_type=code&scope=read%2Cactivity%3Aread_all\n`);
   
   rl.question('请输入您的Strava授权码或包含授权码的完整URL: ', async (input) => {
     try {

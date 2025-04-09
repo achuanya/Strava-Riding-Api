@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
+    "dotenv": "^16.4.7",
     "open": "^8.4.2"
   }
 }
